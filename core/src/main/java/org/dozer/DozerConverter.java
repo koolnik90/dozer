@@ -27,8 +27,8 @@ import org.apache.commons.lang3.ClassUtils;
 public abstract class DozerConverter<A, B> implements ConfigurableCustomConverter {
 
   private String parameter;
-  private Class<A> prototypeA;
-  private Class<B> prototypeB;
+  private final Class<A> prototypeA;
+  private final Class<B> prototypeB;
 
   /**
    * Defines two types, which will take part transformation.
@@ -44,7 +44,8 @@ public abstract class DozerConverter<A, B> implements ConfigurableCustomConverte
   }
 
   // Method first checks exact type matches and only then checks for assignement
-  public Object convert(Object existingDestinationFieldValue, Object sourceFieldValue, Class<?> destinationClass, Class<?> sourceClass) {
+  @Override
+public Object convert(Object existingDestinationFieldValue, Object sourceFieldValue, Class<?> destinationClass, Class<?> sourceClass) {
     Class<?> wrappedDestinationClass = ClassUtils.primitiveToWrapper(destinationClass);
     Class<?> wrappedSourceClass = ClassUtils.primitiveToWrapper(sourceClass);
 
@@ -66,7 +67,7 @@ public abstract class DozerConverter<A, B> implements ConfigurableCustomConverte
       return convertFrom((B) sourceFieldValue, (A) existingDestinationFieldValue);
     } else {
       throw new MappingException("Destination Type (" + wrappedDestinationClass.getName()
-          + ") is not accepted by this Custom Converter (" 
+          + ") is not accepted by this Custom Converter ("
           + this.getClass().getName() + ")!");
     }
 
@@ -121,7 +122,8 @@ public abstract class DozerConverter<A, B> implements ConfigurableCustomConverte
    *
    * @param parameter configured parameter value
    */
-  public void setParameter(String parameter) {
+  @Override
+public void setParameter(String parameter) {
     this.parameter = parameter;
   }
 
@@ -138,5 +140,13 @@ public abstract class DozerConverter<A, B> implements ConfigurableCustomConverte
     }
     return parameter;
   }
+
+  public Class<A> getPrototypeA() {
+     return prototypeA;
+  }
+
+  public Class<B> getPrototypeB() {
+     return prototypeB;
+ }
 
 }

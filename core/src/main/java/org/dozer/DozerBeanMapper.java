@@ -15,6 +15,17 @@
  */
 package org.dozer;
 
+import java.io.InputStream;
+import java.lang.reflect.Proxy;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.dozer.cache.CacheManager;
 import org.dozer.cache.DozerCacheManager;
 import org.dozer.cache.DozerCacheType;
@@ -22,6 +33,7 @@ import org.dozer.classmap.ClassMappings;
 import org.dozer.classmap.Configuration;
 import org.dozer.classmap.MappingFileData;
 import org.dozer.config.GlobalSettings;
+import org.dozer.converters.CustomConverterDescription;
 import org.dozer.event.DozerEventManager;
 import org.dozer.factory.DestBeanCreator;
 import org.dozer.loader.CustomMappingsLoader;
@@ -39,13 +51,6 @@ import org.dozer.stats.StatisticsManager;
 import org.dozer.util.MappingValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.InputStream;
-import java.lang.reflect.Proxy;
-import java.net.URL;
-import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Public Dozer Mapper implementation. This should be used/defined as a singleton within your application. This class
@@ -102,28 +107,32 @@ public class DozerBeanMapper implements Mapper {
   /**
    * {@inheritDoc}
    */
-  public void map(Object source, Object destination, String mapId) throws MappingException {
+  @Override
+public void map(Object source, Object destination, String mapId) throws MappingException {
     getMappingProcessor().map(source, destination, mapId);
   }
 
   /**
    * {@inheritDoc}
    */
-  public <T> T map(Object source, Class<T> destinationClass, String mapId) throws MappingException {
+  @Override
+public <T> T map(Object source, Class<T> destinationClass, String mapId) throws MappingException {
     return getMappingProcessor().map(source, destinationClass, mapId);
   }
 
   /**
    * {@inheritDoc}
    */
-  public <T> T map(Object source, Class<T> destinationClass) throws MappingException {
+  @Override
+public <T> T map(Object source, Class<T> destinationClass) throws MappingException {
     return getMappingProcessor().map(source, destinationClass);
   }
 
   /**
    * {@inheritDoc}
    */
-  public void map(Object source, Object destination) throws MappingException {
+  @Override
+public void map(Object source, Object destination) throws MappingException {
     getMappingProcessor().map(source, destination);
   }
 
@@ -283,8 +292,8 @@ public class DozerBeanMapper implements Mapper {
    * mapping definitions. It provides read only access to all important classes and field
    * mapping properties. When first called, initializes all mappings if map() has not yet been called.
    *
-   * @return An instance of {@line org.dozer.metadata.MappingMetadata} which serves starting point 
-   * for querying mapping information. 
+   * @return An instance of {@line org.dozer.metadata.MappingMetadata} which serves starting point
+   * for querying mapping information.
    */
   public MappingMetadata getMappingMetadata() {
     initMappings();
@@ -313,6 +322,7 @@ public class DozerBeanMapper implements Mapper {
     if (initializing.compareAndSet(false, true)) {
       try {
         loadCustomMappings();
+        addDozerConverters();
         eventManager = new DozerEventManager(eventListeners);
       } catch (RuntimeException e) {
         // reset initialized state if error happens
@@ -331,5 +341,21 @@ public class DozerBeanMapper implements Mapper {
       Thread.currentThread().interrupt();
     }
   }
+
+  /*
+   * Added only Dozer converters to ensure two way binding.
+   */
+ private void addDozerConverters() {
+    for (CustomConverter customConverter : customConverters) {
+     if (customConverter instanceof DozerConverter<?, ?>) {
+        DozerConverter<?, ?> dozerConverter = (DozerConverter<?, ?>) customConverter;
+        CustomConverterDescription converterDescription = new CustomConverterDescription();
+        converterDescription.setType(customConverter.getClass());
+        converterDescription.setClassA(dozerConverter.getPrototypeA());
+        converterDescription.setClassB(dozerConverter.getPrototypeB());
+        globalConfiguration.getCustomConverters().addConverter(converterDescription);
+        }
+    }
+ }
 
 }
